@@ -906,14 +906,24 @@ function gcp_handle_pdf_generation_request() {
                 }
 
                 $insert_data = array(
-                    'cedula_alumno' => $cedula_for_lookup,
+                    'cedula_alumno'        => $cedula_for_lookup,
                     'fluentcrm_contact_id' => $fluent_contact_id,
-                    'course_name' => $certificate_data['nombre_del_curso'] ?? 'N/A',
+                    'course_name'          => $certificate_data['nombre_del_curso'] ?? 'N/A',
                     'certificate_filename' => $file_name,
-                    'certificate_url' => $final_pdf_url,
-                    'date_issued' => current_time( 'mysql' ),
-                    'validation_id' => $certificate_data['id_ministerio_del_curso'] ?? null
+                    'certificate_url'      => $final_pdf_url,
+                    'date_issued'         => current_time( 'mysql' ),
+                    'validation_id'       => $certificate_data['id_ministerio_del_curso'] ?? null
                 );
+
+                $trainer_id = isset( $certificate_data['trainer_id'] ) ? intval( $certificate_data['trainer_id'] ) : 0;
+                if ( $trainer_id ) {
+                    $has_col = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$table_name_issued_certs} LIKE %s", 'trainer_id' ) );
+                    if ( $has_col ) {
+                        $insert_data['trainer_id'] = $trainer_id;
+                    } else {
+                        $insert_data['extra_data'] = wp_json_encode( array( 'trainer_id' => $trainer_id ) );
+                    }
+                }
                 
                 $insert_data = array_filter($insert_data, function($value) { return $value !== null; });
 
