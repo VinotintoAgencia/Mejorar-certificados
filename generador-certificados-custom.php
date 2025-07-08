@@ -232,6 +232,41 @@ function gcp_add_admin_menu_page() {
     );
 }
 
+/**
+ * Obtain list of trainers from a custom post type or option.
+ *
+ * @return array Array of id => name pairs.
+ */
+function gcp_get_trainers() {
+    $trainers = array();
+
+    // Try to get trainers from custom post type first
+    $posts = get_posts(
+        array(
+            'post_type'   => 'gcp_trainer',
+            'numberposts' => -1,
+            'post_status' => 'publish',
+            'orderby'     => 'title',
+            'order'       => 'ASC',
+        )
+    );
+
+    if ( $posts ) {
+        foreach ( $posts as $post ) {
+            $trainers[ $post->ID ] = $post->post_title;
+        }
+    } else {
+        $option = get_option( 'gcp_trainers', array() );
+        if ( is_array( $option ) ) {
+            foreach ( $option as $id => $name ) {
+                $trainers[ $id ] = $name;
+            }
+        }
+    }
+
+    return $trainers;
+}
+
 // MODIFIED FUNCTION
 function gcp_render_admin_page_content() {
     ?>
@@ -364,6 +399,19 @@ function gcp_render_admin_page_content() {
                     <tr>
                         <th scope="row"><label for="gcp_telefono"><?php _e( 'Teléfono', 'gcp-generador-cert' ); ?></label></th>
                         <td><input type="text" id="gcp_telefono" name="gcp_telefono" class="regular-text" readonly></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="gcp_trainer_id"><?php _e( 'Instructor', 'gcp-generador-cert' ); ?></label></th>
+                        <td>
+                            <select id="gcp_trainer_id" name="gcp_trainer_id">
+                                <option value=""><?php _e( 'Selecciona un instructor', 'gcp-generador-cert' ); ?></option>
+                                <?php foreach ( gcp_get_trainers() as $t_id => $t_name ) : ?>
+                                    <option value="<?php echo esc_attr( $t_id ); ?>">
+                                        <?php echo esc_html( $t_name ); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </td>
                     </tr>
                 </tbody>
             </table>

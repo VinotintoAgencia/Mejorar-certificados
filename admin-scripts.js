@@ -3,7 +3,7 @@ jQuery(function($) {
 
   // Cache de selectores
   const $form         = $('#gcp-certificate-form');
-  const $inputs       = $form.find('input.regular-text:not(#gcp_cedula)');
+  const $inputs       = $form.find('input.regular-text:not(#gcp_cedula), select');
   const $cedula       = $('#gcp_cedula');
   const $preview      = $('#gcp-certificate-preview');
   const $previewSpans = $preview.find('span');
