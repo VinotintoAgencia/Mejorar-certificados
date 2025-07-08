@@ -162,6 +162,21 @@ function gcp_register_trainer_post_type() {
 }
 add_action( 'init', 'gcp_register_trainer_post_type' );
 
+/**
+ * Retrieve all published trainers ordered by title.
+ *
+ * @return WP_Post[] Array of trainer posts.
+ */
+function gcp_get_trainer_posts() {
+    return get_posts( array(
+        'post_type'   => 'gcp_trainer',
+        'numberposts' => -1,
+        'post_status' => 'publish',
+        'orderby'     => 'title',
+        'order'       => 'ASC',
+    ) );
+}
+
 
 // +-------------------------------------------------------------------+
 // | SHORTCODES                                                        |
@@ -259,6 +274,7 @@ function gcp_add_admin_menu_page() {
 
 // MODIFIED FUNCTION
 function gcp_render_admin_page_content() {
+    $trainers = gcp_get_trainer_posts();
     ?>
     <div class="wrap">
         <h1><?php _e( 'Generar Certificado', 'gcp-generador-cert' ); ?></h1>
@@ -389,6 +405,17 @@ function gcp_render_admin_page_content() {
                     <tr>
                         <th scope="row"><label for="gcp_telefono"><?php _e( 'Teléfono', 'gcp-generador-cert' ); ?></label></th>
                         <td><input type="text" id="gcp_telefono" name="gcp_telefono" class="regular-text" readonly></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="gcp_trainer_id"><?php _e( 'Instructor', 'gcp-generador-cert' ); ?></label></th>
+                        <td>
+                            <select id="gcp_trainer_id" name="gcp_trainer_id">
+                                <option value="">-- <?php esc_html_e( 'Seleccione', 'gcp-generador-cert' ); ?> --</option>
+                                <?php foreach ( $trainers as $trainer ) : ?>
+                                    <option value="<?php echo esc_attr( $trainer->ID ); ?>"><?php echo esc_html( $trainer->post_title ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </td>
                     </tr>
                 </tbody>
             </table>
