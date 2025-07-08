@@ -4,6 +4,7 @@ jQuery(function($) {
   // Cache de selectores
   const $form         = $('#gcp-certificate-form');
   const $inputs       = $form.find('input.regular-text:not(#gcp_cedula)');
+  const $selects      = $form.find('select');
   const $cedula       = $('#gcp_cedula');
   const $preview      = $('#gcp-certificate-preview');
   const $previewSpans = $preview.find('span');
@@ -24,6 +25,7 @@ jQuery(function($) {
   // Limpia todos los campos y vistas
   function clearUI() {
     $inputs.val('');
+    $selects.prop('selectedIndex', 0);
     $preview.hide();
     $previewSpans.text('');
     $pdfContainer.empty();
