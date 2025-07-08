@@ -4,6 +4,8 @@ jQuery(function($) {
   // Cache de selectores
   const $form         = $('#gcp-certificate-form');
   const $inputs       = $form.find('input.regular-text:not(#gcp_cedula)');
+  const $selects      = $form.find('select');
+  const $trainerSel   = $('#gcp_trainer_id');
   const $cedula       = $('#gcp_cedula');
   const $preview      = $('#gcp-certificate-preview');
   const $previewSpans = $preview.find('span');
@@ -24,6 +26,7 @@ jQuery(function($) {
   // Limpia todos los campos y vistas
   function clearUI() {
     $inputs.val('');
+    $selects.prop('selectedIndex', 0);
     $preview.hide();
     $previewSpans.text('');
     $pdfContainer.empty();
@@ -127,6 +130,9 @@ jQuery(function($) {
       curso: $('#gcp_nombre_del_curso').val()
     };
 
+    const trainerName = $trainerSel.find('option:selected').text();
+    $('#preview_trainer').text(trainerName);
+
     if (!data.nombre && !data.cedula_display) {
       return alert('Por favor, busca primero un contacto.');
     }
@@ -188,6 +194,7 @@ jQuery(function($) {
         formData[obj.name] = obj.value;
       }
     });
+    formData.gcp_trainer_id = $trainerSel.val();
 
     if (!formData.gcp_nombre_completo || !formData.gcp_cedula) {
       removeSpinners();
