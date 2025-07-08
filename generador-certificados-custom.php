@@ -177,6 +177,30 @@ function gcp_get_trainer_posts() {
     ) );
 }
 
+/**
+ * Get trainer data by ID.
+ *
+ * @param int $trainer_id Trainer post ID.
+ * @return array|false Array with name, license and signature_url or false on failure.
+ */
+function gcp_get_trainer_data( $trainer_id ) {
+    $trainer_id = intval( $trainer_id );
+    if ( ! $trainer_id ) {
+        return false;
+    }
+
+    $trainer = get_post( $trainer_id );
+    if ( ! $trainer || 'gcp_trainer' !== $trainer->post_type ) {
+        return false;
+    }
+
+    return array(
+        'name'          => $trainer->post_title,
+        'license'       => get_post_meta( $trainer_id, 'gcp_trainer_license', true ),
+        'signature_url' => get_post_meta( $trainer_id, 'gcp_trainer_signature_url', true ),
+    );
+}
+
 
 // +-------------------------------------------------------------------+
 // | SHORTCODES                                                        |
@@ -989,8 +1013,25 @@ function gcp_get_certificate_html_template($data) {
     
     // Datos Fijos
     $logo_url = plugin_dir_url( __FILE__ ) . 'assets/images/logo hseq.png';
-    $nombre_entrenador = "RUBY HIGUITA";
-    $licencia_sst_entrenador = "[LICENCIA SST RUBY AQUÍ]";
+
+    $default_trainer_name    = 'RUBY HIGUITA';
+    $default_trainer_license = '[LICENCIA SST RUBY AQUÍ]';
+
+    $trainer_name      = ! empty( $data['trainer_name'] ) ? htmlspecialchars( $data['trainer_name'], ENT_QUOTES, 'UTF-8' ) : $default_trainer_name;
+    $trainer_license   = ! empty( $data['trainer_license'] ) ? htmlspecialchars( $data['trainer_license'], ENT_QUOTES, 'UTF-8' ) : $default_trainer_license;
+    $trainer_signature = ! empty( $data['trainer_signature'] ) ? esc_url( $data['trainer_signature'] ) : '';
+
+    if ( empty( $data['trainer_name'] ) && ! empty( $data['trainer_id'] ) ) {
+        $trainer = gcp_get_trainer_data( $data['trainer_id'] );
+        if ( $trainer ) {
+            $trainer_name      = htmlspecialchars( $trainer['name'], ENT_QUOTES, 'UTF-8' );
+            $trainer_license   = htmlspecialchars( $trainer['license'], ENT_QUOTES, 'UTF-8' ) ?: $trainer_license;
+            $trainer_signature = $trainer['signature_url'] ? esc_url( $trainer['signature_url'] ) : $trainer_signature;
+        }
+    }
+
+    $trainer_signature_html = $trainer_signature ? '<img src="' . $trainer_signature . '" alt="Firma del instructor" style="max-height:40px;">' : '&nbsp;';
+
     $representante_legal_certificadora = "Mónica Marcela Cañas Gomez";
     $url_verificacion_web = "https://www.hseqdelgolfo.com.co";
     $web_verificacion_display = "www.hseqdelgolfo.com.co";
@@ -1179,8 +1220,8 @@ function gcp_get_certificate_html_template($data) {
     <table class="signatures">
       <tr>
         <td>
-          <div class="sign-line">&nbsp;</div>
-          <p>{$nombre_entrenador}<br>Entrenador trabajo en altura<br>Licencia SST: {$licencia_sst_entrenador}</p>
+          <div class="sign-line">{$trainer_signature_html}</div>
+          <p>{$trainer_name}<br>Entrenador trabajo en altura<br>Licencia SST: {$trainer_license}</p>
         </td>
         <td>
           <div class="sign-line">&nbsp;</div>
