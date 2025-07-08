@@ -137,6 +137,31 @@ function gcp_create_contact_verifications_table() {
     dbDelta( $sql );
 }
 
+// ---------------------------------------------------------------
+// | CUSTOM POST TYPE: TRAINERS                                   |
+// ---------------------------------------------------------------
+
+/**
+ * Register the gcp_trainer post type used to store instructors.
+ */
+function gcp_register_trainer_post_type() {
+    $labels = array(
+        'name'          => __( 'Instructores', 'gcp-generador-cert' ),
+        'singular_name' => __( 'Instructor', 'gcp-generador-cert' ),
+    );
+
+    $args = array(
+        'labels'       => $labels,
+        'public'       => false,
+        'show_ui'      => false, // UI will be provided by the plugin
+        'supports'     => array( 'title' ),
+        'capability_type' => 'post',
+    );
+
+    register_post_type( 'gcp_trainer', $args );
+}
+add_action( 'init', 'gcp_register_trainer_post_type' );
+
 
 // +-------------------------------------------------------------------+
 // | SHORTCODES                                                        |
@@ -1199,6 +1224,21 @@ function gcp_add_verificacion_admision_submenu_page() {
 add_action( 'admin_menu', 'gcp_add_verificacion_admision_submenu_page' );
 
 /**
+ * Register the trainers management submenu page.
+ */
+function gcp_add_trainers_submenu_page() {
+    add_submenu_page(
+        'gcp_generar_certificado',
+        __( 'Instructores', 'gcp-generador-cert' ),
+        __( 'Instructores', 'gcp-generador-cert' ),
+        'manage_options',
+        'gcp_trainers',
+        'gcp_render_trainers_page'
+    );
+}
+add_action( 'admin_menu', 'gcp_add_trainers_submenu_page' );
+
+/**
  * Render the admission verification page with a cedula search and verification button.
  */
 function gcp_render_verificacion_admision_page() {
@@ -1561,6 +1601,140 @@ function gcp_render_administrar_certificados_page() {
                     <tr>
                         <td colspan="6"><?php _e( 'No se encontraron certificados.', 'gcp-generador-cert' ); ?></td>
                     </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php
+}
+
+/**
+ * Render the trainers management page.
+ */
+function gcp_render_trainers_page() {
+    if ( ! current_user_can( 'manage_options' ) ) {
+        return;
+    }
+
+    $edit_id = isset( $_GET['trainer_id'] ) ? intval( $_GET['trainer_id'] ) : 0;
+
+    if ( isset( $_POST['gcp_trainer_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['gcp_trainer_nonce'] ) ), 'gcp_save_trainer' ) ) {
+        $name          = sanitize_text_field( wp_unslash( $_POST['trainer_name'] ) );
+        $license       = sanitize_text_field( wp_unslash( $_POST['trainer_license'] ) );
+        $signature_url = esc_url_raw( wp_unslash( $_POST['trainer_signature'] ) );
+        $trainer_id    = isset( $_POST['trainer_id'] ) ? intval( $_POST['trainer_id'] ) : 0;
+
+        if ( $trainer_id ) {
+            wp_update_post( array( 'ID' => $trainer_id, 'post_title' => $name ) );
+        } else {
+            $trainer_id = wp_insert_post( array(
+                'post_type'   => 'gcp_trainer',
+                'post_status' => 'publish',
+                'post_title'  => $name,
+            ) );
+        }
+
+        if ( $trainer_id ) {
+            update_post_meta( $trainer_id, 'gcp_trainer_license', $license );
+            update_post_meta( $trainer_id, 'gcp_trainer_signature_url', $signature_url );
+            add_settings_error( 'gcp_trainers', 'trainer_saved', __( 'Instructor guardado correctamente.', 'gcp-generador-cert' ), 'updated' );
+            $edit_id = 0;
+        } else {
+            add_settings_error( 'gcp_trainers', 'trainer_error', __( 'Error al guardar el instructor.', 'gcp-generador-cert' ), 'error' );
+        }
+    }
+
+    if ( isset( $_GET['action'], $_GET['trainer_id'], $_GET['_wpnonce'] ) && 'delete' === $_GET['action'] ) {
+        $del_id = intval( $_GET['trainer_id'] );
+        if ( wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'gcp_delete_trainer_' . $del_id ) ) {
+            wp_delete_post( $del_id, true );
+            add_settings_error( 'gcp_trainers', 'trainer_deleted', __( 'Instructor eliminado.', 'gcp-generador-cert' ), 'updated' );
+            wp_safe_redirect( remove_query_arg( array( 'action', 'trainer_id', '_wpnonce' ) ) );
+            exit;
+        }
+    }
+
+    $trainer_name      = '';
+    $trainer_license   = '';
+    $trainer_signature = '';
+
+    if ( $edit_id ) {
+        $trainer = get_post( $edit_id );
+        if ( $trainer && 'gcp_trainer' === $trainer->post_type ) {
+            $trainer_name      = $trainer->post_title;
+            $trainer_license   = get_post_meta( $edit_id, 'gcp_trainer_license', true );
+            $trainer_signature = get_post_meta( $edit_id, 'gcp_trainer_signature_url', true );
+        } else {
+            $edit_id = 0;
+        }
+    }
+
+    $trainers = get_posts( array(
+        'post_type'   => 'gcp_trainer',
+        'numberposts' => -1,
+        'post_status' => 'publish',
+        'orderby'     => 'title',
+        'order'       => 'ASC',
+    ) );
+
+    ?>
+    <div class="wrap">
+        <h1><?php _e( 'Instructores', 'gcp-generador-cert' ); ?></h1>
+        <?php settings_errors( 'gcp_trainers' ); ?>
+        <form method="post">
+            <?php wp_nonce_field( 'gcp_save_trainer', 'gcp_trainer_nonce' ); ?>
+            <input type="hidden" name="trainer_id" value="<?php echo esc_attr( $edit_id ); ?>">
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><label for="trainer_name"><?php _e( 'Nombre', 'gcp-generador-cert' ); ?></label></th>
+                    <td><input type="text" id="trainer_name" name="trainer_name" class="regular-text" value="<?php echo esc_attr( $trainer_name ); ?>" required></td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="trainer_license"><?php _e( 'Licencia', 'gcp-generador-cert' ); ?></label></th>
+                    <td><input type="text" id="trainer_license" name="trainer_license" class="regular-text" value="<?php echo esc_attr( $trainer_license ); ?>"></td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="trainer_signature"><?php _e( 'URL de Firma', 'gcp-generador-cert' ); ?></label></th>
+                    <td><input type="text" id="trainer_signature" name="trainer_signature" class="regular-text" value="<?php echo esc_attr( $trainer_signature ); ?>"></td>
+                </tr>
+            </table>
+            <p class="submit">
+                <input type="submit" class="button button-primary" value="<?php echo $edit_id ? esc_attr__( 'Guardar', 'gcp-generador-cert' ) : esc_attr__( 'Agregar', 'gcp-generador-cert' ); ?>">
+                <?php if ( $edit_id ) : ?>
+                    <a href="<?php echo esc_url( remove_query_arg( 'trainer_id' ) ); ?>" class="button"><?php _e( 'Cancelar', 'gcp-generador-cert' ); ?></a>
+                <?php endif; ?>
+            </p>
+        </form>
+
+        <h2><?php _e( 'Lista de Instructores', 'gcp-generador-cert' ); ?></h2>
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th><?php _e( 'Nombre', 'gcp-generador-cert' ); ?></th>
+                    <th><?php _e( 'Licencia', 'gcp-generador-cert' ); ?></th>
+                    <th><?php _e( 'Firma', 'gcp-generador-cert' ); ?></th>
+                    <th><?php _e( 'Acciones', 'gcp-generador-cert' ); ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if ( $trainers ) : foreach ( $trainers as $trainer_item ) : ?>
+                    <?php
+                    $lic  = get_post_meta( $trainer_item->ID, 'gcp_trainer_license', true );
+                    $sign = get_post_meta( $trainer_item->ID, 'gcp_trainer_signature_url', true );
+                    $edit_link   = add_query_arg( array( 'trainer_id' => $trainer_item->ID ), menu_page_url( 'gcp_trainers', false ) );
+                    $delete_link = wp_nonce_url( add_query_arg( array( 'action' => 'delete', 'trainer_id' => $trainer_item->ID ), menu_page_url( 'gcp_trainers', false ) ), 'gcp_delete_trainer_' . $trainer_item->ID );
+                    ?>
+                    <tr>
+                        <td><?php echo esc_html( $trainer_item->post_title ); ?></td>
+                        <td><?php echo esc_html( $lic ); ?></td>
+                        <td><?php echo esc_html( $sign ); ?></td>
+                        <td>
+                            <a href="<?php echo esc_url( $edit_link ); ?>"><?php _e( 'Editar', 'gcp-generador-cert' ); ?></a> |
+                            <a href="<?php echo esc_url( $delete_link ); ?>" onclick="return confirm('<?php esc_attr_e( '¿Borrar instructor?', 'gcp-generador-cert' ); ?>');"><?php _e( 'Eliminar', 'gcp-generador-cert' ); ?></a>
+                        </td>
+                    </tr>
+                <?php endforeach; else : ?>
+                    <tr><td colspan="4"><?php _e( 'No hay instructores.', 'gcp-generador-cert' ); ?></td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
